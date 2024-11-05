@@ -16,13 +16,14 @@ export class AuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const ctx = GqlExecutionContext.create(context)
     const req = ctx.getContext().req
 
+    //here we 1st check the user is exit or not by  the token
     await this.authenticateUser(req)
-
+    //if  available then check the the user is authorize or not.
     return this.authorizeUser(req, context)
   }
 
@@ -32,21 +33,35 @@ export class AuthGuard implements CanActivate {
     const token = bearerHeader?.split(' ')[1]
 
     if (!token) {
+      //if there  is no token available then this error .
       throw new UnauthorizedException('No token provided.')
     }
 
     try {
-      const user = await this.jwtService.verify(token)
-      req.user = user
+      const payload = await this.jwtService.verify(token)
+      const uid = payload.uid
+      if (!uid) {
+        throw new UnauthorizedException('Invalid token No uid present in this token.')
+      }
+      const user = this.prisma.user.findUnique({ where: { uid } })
+      if (!user) {
+        throw new UnauthorizedException('Invalid token, No User present in this uid.')
+
+      }
+      // console.log('jwt Payload',user)
+      req.user = payload
     } catch (err) {
+      //if there are some error in validating the token from backend the error occur
       console.error('Token validation error:', err)
     }
 
     if (!req.user) {
+      //if there is a invalid  or wrong token provided.
       throw new UnauthorizedException('Invalid token.')
     }
   }
 
+  //in this we can check if the present user is authorize or not..
   private async authorizeUser(
     req: any,
     context: ExecutionContext,
@@ -58,7 +73,6 @@ export class AuthGuard implements CanActivate {
     if (!requiredRoles || requiredRoles.length === 0) {
       return true
     }
-
     return requiredRoles.some((role) => userRoles.includes(role))
   }
 

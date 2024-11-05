@@ -32,6 +32,7 @@ export class UsersController {
     return this.prisma.user.create({ data: createUserDto })
   }
 
+  @AllowAuthenticated()
   @ApiOkResponse({ type: [UserEntity] })
   @Get()
   findAll(@Query() { skip, take, order, sortBy }: UserQueryDto) {
