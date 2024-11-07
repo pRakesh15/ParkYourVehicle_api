@@ -16,14 +16,13 @@ export class AuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
     private readonly prisma: PrismaService,
-  ) { }
+  ) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const ctx = GqlExecutionContext.create(context)
     const req = ctx.getContext().req
 
-    //here we 1st check the user is exit or not by  the token
     await this.authenticateUser(req)
-    //if  available then check the the user is authorize or not.
+
     return this.authorizeUser(req, context)
   }
 
@@ -33,7 +32,6 @@ export class AuthGuard implements CanActivate {
     const token = bearerHeader?.split(' ')[1]
 
     if (!token) {
-      //if there  is no token available then this error .
       throw new UnauthorizedException('No token provided.')
     }
 
@@ -41,38 +39,42 @@ export class AuthGuard implements CanActivate {
       const payload = await this.jwtService.verify(token)
       const uid = payload.uid
       if (!uid) {
-        throw new UnauthorizedException('Invalid token No uid present in this token.')
+        throw new UnauthorizedException(
+          'Invalid token. No uid present in the token.',
+        )
       }
-      const user = this.prisma.user.findUnique({ where: { uid } })
-      if (!user) {
-        throw new UnauthorizedException('Invalid token, No User present in this uid.')
 
+      const user = await this.prisma.user.findUnique({ where: { uid } })
+      if (!user) {
+        throw new UnauthorizedException(
+          'Invalid token. No user present with the uid.',
+        )
       }
-      // console.log('jwt Payload',user)
+
+      console.log('jwt payload: ', payload)
       req.user = payload
     } catch (err) {
-      //if there are some error in validating the token from backend the error occur
       console.error('Token validation error:', err)
+      throw err
     }
 
     if (!req.user) {
-      //if there is a invalid  or wrong token provided.
       throw new UnauthorizedException('Invalid token.')
     }
   }
 
-  //in this we can check if the present user is authorize or not..
   private async authorizeUser(
     req: any,
     context: ExecutionContext,
   ): Promise<boolean> {
+    const requiredRoles = this.getMetadata<Role[]>('roles', context)
     const userRoles = await this.getUserRoles(req.user.uid)
     req.user.roles = userRoles
 
-    const requiredRoles = this.getMetadata<Role[]>('roles', context)
     if (!requiredRoles || requiredRoles.length === 0) {
       return true
     }
+
     return requiredRoles.some((role) => userRoles.includes(role))
   }
 
@@ -84,15 +86,18 @@ export class AuthGuard implements CanActivate {
   }
 
   private async getUserRoles(uid: string): Promise<Role[]> {
-    const rolePromises = [
-      this.prisma.admin.findUnique({ where: { uid } }),
-      // Add promises for other role models here
-    ]
-
     const roles: Role[] = []
 
-    const [admin] = await Promise.all(rolePromises)
+    const [admin, manager, valet] = await Promise.all([
+      this.prisma.admin.findUnique({ where: { uid } }),
+      this.prisma.manager.findUnique({ where: { uid } }),
+      this.prisma.valet.findUnique({ where: { uid } }),
+      // Add promises for other role models here
+    ])
+
     admin && roles.push('admin')
+    manager && roles.push('manager')
+    valet && roles.push('valet')
 
     return roles
   }
