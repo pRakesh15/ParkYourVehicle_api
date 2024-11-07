@@ -18,6 +18,6 @@ export const checkRowLevelPermission = (
       : requestedUid.filter(Boolean)
 
   if (!uids.includes(user.uid)) {
-    throw new ForbiddenException()
+    throw new ForbiddenException('unauthorized request')
   }
 }

@@ -1,4 +1,4 @@
-import { Resolver, Query, Mutation, Args } from '@nestjs/graphql'
+import { Resolver, Query, Mutation, Args, ResolveField, Parent } from '@nestjs/graphql'
 import { BookingsService } from './bookings.service'
 import { Bookings } from './entity/bookings.entity'
 import { checkRowLevelPermission } from 'src/common/auth/util'
@@ -8,6 +8,10 @@ import { PrismaService } from 'src/common/prisma/prisma.service'
 import { CreateBookingInput } from './dtos/create-booking.input'
 import { FindManyBookingArgs, FindUniqueBookingArgs } from './dtos/find.args'
 import { UpdateBookingInput } from './dtos/update-booking.input'
+import { Slots } from 'src/models/slots/graphql/entity/slots.entity'
+import { Customer } from 'src/models/customers/graphql/entity/customer.entity'
+import { BookingTimeline } from 'src/models/booking-timelines/graphql/entity/booking-timeline.entity'
+import { ValetAssignment } from 'src/models/valet-assignments/graphql/entity/valet-assignment.entity'
 
 @Resolver(() => Bookings)
 export class BookingsResolver {
@@ -47,5 +51,31 @@ export class BookingsResolver {
     const bookings = await this.prisma.bookings.findUnique(args)
     checkRowLevelPermission(user, bookings.customerId)
     return this.bookingsService.remove(args)
+  }
+
+  @ResolveField(() => Slots)
+  slot(@Parent() booking: Bookings) {
+    return this.prisma.slots.findFirst({ where: { id: booking.slotId } })
+  }
+
+  @ResolveField(() => Customer)
+  customer(@Parent() booking: Bookings) {
+    return this.prisma.customer.findFirst({
+      where: { uid: booking.customerId },
+    })
+  }
+
+  @ResolveField(() => [BookingTimeline])
+  bookingTimeline(@Parent() booking: Bookings) {
+    return this.prisma.bookingTimeline.findMany({
+      where: { bookingId: booking.id },
+    })
+  }
+
+  @ResolveField(() => ValetAssignment, { nullable: true })
+  valetAssignment(@Parent() booking: Bookings) {
+    return this.prisma.valetAssignment.findFirst({
+      where: { bookingId: booking.id },
+    })
   }
 }

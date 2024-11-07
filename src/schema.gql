@@ -38,6 +38,9 @@ type Admin {
   uid: String!
   createdAt: DateTime!
   updatedAt: DateTime!
+  user: User
+  verification: [Verification!]!
+  verificationCount: Int!
 }
 
 type Manager {
@@ -46,6 +49,7 @@ type Manager {
   createdAt: DateTime!
   updatedAt: DateTime!
   uid: String!
+  user: User
 }
 
 type Valet {
@@ -63,6 +67,8 @@ type Customer {
   uid: String!
   createdAt: DateTime!
   updatedAt: DateTime!
+  user: User
+  bookings: [Bookings!]!
 }
 
 type Address {
@@ -73,35 +79,7 @@ type Address {
   id: Int!
   lat: Int!
   lng: Int!
-}
-
-type Company {
-  description: String
-  displayName: String
-  createdAt: DateTime!
-  updatedAt: DateTime!
-  id: Int!
-}
-
-type Slots {
-  displayName: String
-  length: Int
-  type: SlotType!
-  width: Int
-  height: Int
-  id: Int!
-  createdAt: DateTime!
-  updatedAt: DateTime!
-  garageId: Int!
-  pricePerHour: Int!
-}
-
-"""Type of slot available for vehicles"""
-enum SlotType {
-  CAR
-  HEAVY
-  BIKE
-  BICYCLE
+  garage: Garages
 }
 
 type Garages {
@@ -112,6 +90,10 @@ type Garages {
   updatedAt: DateTime!
   companyId: Int!
   image: [String!]!
+  verification: Verification
+  company: Company!
+  address: Address
+  slots: [Slots!]!
 }
 
 type Verification {
@@ -120,6 +102,16 @@ type Verification {
   garageId: Int!
   verified: Boolean!
   adminId: String!
+}
+
+type Company {
+  description: String
+  displayName: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  id: Int!
+  garages: [Garages!]!
+  managers: [Manager!]!
 }
 
 type Bookings {
@@ -136,6 +128,10 @@ type Bookings {
   vehicleNumber: String!
   slotId: Int!
   customerId: String!
+  slot: Slots!
+  customer: Customer!
+  bookingTimeline: [BookingTimeline!]!
+  valetAssignment: ValetAssignment
 }
 
 """Type of status available for vehicles"""
@@ -149,6 +145,29 @@ enum BookingStatus {
   VALET_RETURNED
 }
 
+type Slots {
+  displayName: String
+  length: Int
+  type: SlotType!
+  width: Int
+  height: Int
+  id: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  garageId: Int!
+  pricePerHour: Int!
+  garage: Garages!
+  bookings: [Bookings!]!
+}
+
+"""Type of slot available for vehicles"""
+enum SlotType {
+  CAR
+  HEAVY
+  BIKE
+  BICYCLE
+}
+
 type ValetAssignment {
   returnLat: Int
   returnLng: Int
@@ -159,6 +178,8 @@ type ValetAssignment {
   updatedAt: DateTime!
   pickupLat: Int!
   pickupLng: Int!
+  pickupValet: Valet
+  returnValet: Valet
 }
 
 type BookingTimeline {
@@ -1080,14 +1101,12 @@ input CreateCompanyInput {
   description: String
   displayName: String
   managerId: String!
-  managerName: String
 }
 
 input UpdateCompanyInput {
   description: String
   displayName: String
   managerId: String
-  managerName: String
   id: Int!
 }
 

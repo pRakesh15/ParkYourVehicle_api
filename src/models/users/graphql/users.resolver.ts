@@ -116,4 +116,6 @@ export class UsersResolver {
   customer(@Parent() user: User) {
     return this.prisma.customer.findUnique({ where: { uid: user.uid } })
   }
+
+
 }
