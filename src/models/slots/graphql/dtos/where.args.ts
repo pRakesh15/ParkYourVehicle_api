@@ -14,7 +14,7 @@ import { GarageRelationFilter } from 'src/models/garages/graphql/dtos/where.args
 export class SlotWhereUniqueInput {
   id: number
 }
-
+ 
 @InputType()
 export class EnumSlotTypeFilter {
   @Field(() => $Enums.SlotType, { nullable: true })

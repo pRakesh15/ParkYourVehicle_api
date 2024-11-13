@@ -51,9 +51,9 @@ registerEnumType(BookingStatus, {
       introspection: true,
       fieldResolverEnhancers: ['guards'],
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
-      buildSchemaOptions: {
-        numberScalarMode: 'integer',
-      },
+      // buildSchemaOptions: {
+      //   numberScalarMode: 'integer',
+      // },
     }),
     PrismaModule,
     UsersModule,
