@@ -27,6 +27,7 @@ const MAX_AGE = 24 * 60 * 60;
 
 import { registerEnumType } from '@nestjs/graphql';
 import { BookingStatus, SlotType } from '@prisma/client';
+import { StripeModule } from './models/stripe/stripe.module';
 
 // Register SlotType with GraphQL
 registerEnumType(SlotType, {
@@ -69,7 +70,8 @@ registerEnumType(BookingStatus, {
     BookingsModule,
     BookingTimelinesModule,
     ValetAssignmentsModule,
-    ReviewsModule
+    ReviewsModule,
+    StripeModule
   ],
   controllers: [AppController],
   providers: [AppService],
