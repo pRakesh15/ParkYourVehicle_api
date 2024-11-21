@@ -14,7 +14,7 @@ import { Manager } from 'src/models/managers/graphql/entity/manager.entity'
 @Resolver(() => Company)
 export class CompaniesResolver {
   constructor(private readonly companiesService: CompaniesService,
-    private readonly prisma: PrismaService) {}
+    private readonly prisma: PrismaService) { }
 
   @AllowAuthenticated('manager')
   @Mutation(() => Company)
@@ -27,9 +27,18 @@ export class CompaniesResolver {
     return this.companiesService.create(args)
   }
 
+  @AllowAuthenticated()
   @Query(() => [Company], { name: 'companies' })
   findAll(@Args() args: FindManyCompanyArgs) {
     return this.companiesService.findAll(args)
+  }
+
+  @AllowAuthenticated()
+  @Query(() => Company)
+  myCompany(@GetUser() user: GetUserType) {
+    return this.prisma.company.findFirst({
+      where: { Managers: { some: { uid: user.uid } } }
+    })
   }
 
   @Query(() => Company, { name: 'company' })
