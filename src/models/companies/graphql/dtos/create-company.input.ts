@@ -8,4 +8,5 @@ export class CreateCompanyInput extends PickType(
   InputType,
 ) {
   managerId: string
+  managerName:string
 }

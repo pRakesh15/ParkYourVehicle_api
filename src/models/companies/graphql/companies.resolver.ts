@@ -16,14 +16,15 @@ export class CompaniesResolver {
   constructor(private readonly companiesService: CompaniesService,
     private readonly prisma: PrismaService) { }
 
-  @AllowAuthenticated('manager')
+  @AllowAuthenticated()
   @Mutation(() => Company)
   createCompany(
     @Args('createCompanyInput') args: CreateCompanyInput,
+    @GetUser() user: GetUserType
   ) {
-    // const managerId = args.managerId
+    const managerId = args.managerId
 
-    // checkRowLevelPermission(user, managerId)
+    checkRowLevelPermission(user, managerId)
     return this.companiesService.create(args)
   }
 

@@ -1,5 +1,5 @@
 import { Field, ObjectType } from '@nestjs/graphql'
-import { Garages as GaragesType } from '@prisma/client'
+import { Garages as GaragesType, SlotType } from '@prisma/client'
 import { RestrictProperties } from 'src/common/dtos/common.input'
 
 @ObjectType()
@@ -14,4 +14,11 @@ export class Garages implements RestrictProperties<Garages,GaragesType> {
     companyId: number
     image: string[]
 
+}
+
+@ObjectType()
+export class SlotTypeCount{
+    @Field(()=>SlotType)
+    type:SlotType
+    count:number
 }

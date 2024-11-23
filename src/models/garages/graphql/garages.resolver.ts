@@ -16,7 +16,7 @@ import { AllowAuthenticated, GetUser } from 'src/common/auth/auth.decorator'
 import { PrismaService } from 'src/common/prisma/prisma.service'
 
 import { BadRequestException } from '@nestjs/common'
-import { Garages } from './entity/garages.entity'
+import { Garages, SlotTypeCount } from './entity/garages.entity'
 import { FindManyGarageArgs, FindUniqueGarageArgs } from './dtos/find.args'
 import { UpdateGarageInput } from './dtos/update-garage.input'
 import { Verification } from 'src/models/verifications/graphql/entity/verification.entity'
@@ -24,14 +24,16 @@ import { Company } from 'src/models/companies/graphql/entity/company.entity'
 import { Address } from 'src/models/addresses/graphql/entity/address.entity'
 import { Slots } from 'src/models/slots/graphql/entity/slots.entity'
 import { DateFilterInput, GarageFilter, MinimalSlotGroupBy } from './dtos/search-filter.input'
-import { LocationFilterInput } from 'src/common/dtos/common.input'
+import { AggregateCountOutput, LocationFilterInput } from 'src/common/dtos/common.input'
 import { SlotWhereInput } from 'src/models/slots/graphql/dtos/where.args'
-import { equals } from 'class-validator'
+import { GarageWhereInput } from './dtos/where.args'
 
 @Resolver(() => Garages)
 export class GaragesResolver {
-  constructor(private readonly garagesService: GaragesService,
-    private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly garagesService: GaragesService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @AllowAuthenticated('manager')
   @Mutation(() => Garages)
@@ -56,7 +58,7 @@ export class GaragesResolver {
     return this.garagesService.findAll(args)
   }
 
-  @Query(() => Garages, { name: 'garages' })
+  @Query(() => Garages, { name: 'garage' })
   findOne(@Args() args: FindUniqueGarageArgs) {
     return this.garagesService.findOne(args)
   }
@@ -75,30 +77,27 @@ export class GaragesResolver {
     let endDate = new Date(end)
     const currentDate = new Date()
 
-
-    const diffInSecond = Math.floor(
+    const diffInSeconds = Math.floor(
       (endDate.getTime() - startDate.getTime()) / 1000,
     )
 
-    //make a validation for selecting date
     if (startDate.getTime() < currentDate.getTime()) {
-      //if the start date is less than present date the assign start date to current date
-      startDate = new Date();
-      const updateEndDte = new Date(startDate);
-      //in this case the time is calculated in second or  hour 
-      updateEndDte.setSeconds(updateEndDte.getSeconds() + diffInSecond)
-      endDate = updateEndDte
+      // Set startDate as current time
+      startDate = new Date()
+      const updatedEndDate = new Date(startDate)
+      updatedEndDate.setSeconds(updatedEndDate.getSeconds() + diffInSeconds)
+      endDate = updatedEndDate
     }
 
-    //check if the end date is less than start date
     if (startDate.getTime() > endDate.getTime()) {
-      throw new BadRequestException('Start time must be earlier then end time ')
-
+      throw new BadRequestException(
+        'Start time should be earlier than the end time.',
+      )
     }
 
     const { where = {}, ...garageFilters } = args || {}
 
-    return await this.prisma.garages.findMany({
+    return this.prisma.garages.findMany({
       ...garageFilters,
       where: {
         ...where,
@@ -119,14 +118,32 @@ export class GaragesResolver {
                   {
                     startTime: { gt: startDate },
                     endTime: { lt: endDate },
-                  }
-                ]
-              }
-            }
-          }
-        }
-      }
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
     })
+  }
+
+  @ResolveField(() => [SlotTypeCount])
+  async slotCounts(@Parent() garage: Garages) {
+    const slotCounts = await this.prisma.slots.groupBy({
+      by: ['type'],
+      where: {
+        garageId: garage.id,
+      },
+      _count: {
+        type: true,
+      },
+    })
+
+    return slotCounts.map(({ type, _count }) => ({
+      type,
+      count: _count.type,
+    }))
   }
 
   @ResolveField(() => [MinimalSlotGroupBy], {
@@ -136,18 +153,15 @@ export class GaragesResolver {
     @Parent() garage: Garages,
     @Args('slotsFilter', { nullable: true }) slotsFilter: SlotWhereInput,
     @Args('dateFilter') dateFilter: DateFilterInput,
-
   ) {
     const { start, end } = dateFilter
-
-    let startDate = new Date(start)
-    let endDate = new Date(end)
-    const currentDate = new Date()
+    const startDate = new Date(start)
+    const endDate = new Date(end)
 
     const groupBySlots = await this.prisma.slots.groupBy({
       by: ['type'],
       _count: { type: true },
-      _min:{pricePerHour:true},
+      _min: { pricePerHour: true },
       where: {
         ...slotsFilter,
         garageId: { equals: garage.id },
@@ -161,20 +175,19 @@ export class GaragesResolver {
               {
                 startTime: { gt: startDate },
                 endTime: { lt: endDate },
-              }
-            ]
-          }
-        }
-      }
+              },
+            ],
+          },
+        },
+      },
     })
 
-    return groupBySlots.map(({_count,type,_min})=>({
+    return groupBySlots.map(({ _count, type, _min }) => ({
       type,
-      count:_count.type,
-      pricePerHour:_min.pricePerHour
+      count: _count.type,
+      pricePerHour: _min.pricePerHour,
     }))
   }
-
 
   @AllowAuthenticated()
   @Mutation(() => Garages)
@@ -193,8 +206,6 @@ export class GaragesResolver {
     return this.garagesService.update(args)
   }
 
-  @AllowAuthenticated()
-  @Mutation(() => Garages)
   @AllowAuthenticated()
   @Mutation(() => Garages)
   async removeGarage(
@@ -233,5 +244,19 @@ export class GaragesResolver {
   slots(@Parent() garage: Garages) {
     return this.prisma.slots.findMany({ where: { garageId: garage.id } })
   }
-}
 
+  @Query(() => AggregateCountOutput, {
+    name: 'garagesCount',
+  })
+  async garagesCount(
+    @Args('where', { nullable: true })
+    where: GarageWhereInput,
+  ) {
+    const garages = await this.prisma.garages.aggregate({
+      _count: { _all: true },
+      where,
+    })
+    return { count: garages._count._all }
+  }
+  
+}

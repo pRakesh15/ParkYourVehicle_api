@@ -29,6 +29,10 @@ enum AuthProviderType {
   CREDENTIALS
 }
 
+type AggregateCountOutput {
+  count: Float!
+}
+
 type LoginOutput {
   token: String!
   user: User!
@@ -90,6 +94,7 @@ type Garages {
   updatedAt: DateTime!
   companyId: Float!
   image: [String!]!
+  slotCounts: [SlotTypeCount!]!
   availableSlots(slotsFilter: SlotWhereInput, dateFilter: DateFilterInput!): [MinimalSlotGroupBy!]!
   verification: Verification
   company: Company!
@@ -526,6 +531,11 @@ input DateFilterInput {
   end: String!
 }
 
+type SlotTypeCount {
+  type: SlotType!
+  count: Float!
+}
+
 type Verification {
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -632,8 +642,10 @@ type Query {
   company(where: CompanyWhereUniqueInput!): Company!
   customers(distinct: [CustomerScalarFieldEnum!], where: CustomerWhereInput, orderBy: [CustomerOrderByWithRelationInput!], cursor: CustomerWhereUniqueInput, take: Float, skip: Float): [Customer!]!
   customer(where: CustomerWhereUniqueInput!): Customer!
-  garages(where: GarageWhereUniqueInput!): Garages!
+  garages(distinct: [GarageScalarFieldEnum!], where: GarageWhereInput, orderBy: [GarageOrderByWithRelationInput!], cursor: GarageWhereUniqueInput, take: Float, skip: Float): [Garages!]!
+  garage(where: GarageWhereUniqueInput!): Garages!
   searchGarages(dateFilter: DateFilterInput!, locationFilter: LocationFilterInput!, slotsFilter: SlotWhereInput, garageFilter: GarageFilter): [Garages!]!
+  garagesCount(where: GarageWhereInput): AggregateCountOutput!
   managers(distinct: [ManagerScalarFieldEnum!], where: ManagerWhereInput, orderBy: [ManagerOrderByWithRelationInput!], cursor: ManagerWhereUniqueInput, take: Float, skip: Float): [Manager!]!
   manager(where: ManagerWhereUniqueInput!): Manager!
   slots(where: SlotWhereUniqueInput!): Slots!
@@ -849,6 +861,16 @@ enum CustomerScalarFieldEnum {
 
 input CustomerWhereUniqueInput {
   uid: String!
+}
+
+enum GarageScalarFieldEnum {
+  id
+  createdAt
+  updatedAt
+  displayName
+  description
+  image
+  companyId
 }
 
 input GarageWhereUniqueInput {
@@ -1129,12 +1151,14 @@ input CreateCompanyInput {
   description: String
   displayName: String
   managerId: String!
+  managerName: String!
 }
 
 input UpdateCompanyInput {
   description: String
   displayName: String
   managerId: String
+  managerName: String
   id: Float!
 }
 
