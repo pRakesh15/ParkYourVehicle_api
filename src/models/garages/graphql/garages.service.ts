@@ -17,7 +17,6 @@ export class GaragesService {
     image,
     Slots,
   }: CreateGarageInput & { companyId: number }) {
-    // Check if any slot has a count greater than 20
     if (Slots.some((slot) => slot.count > 10)) {
       throw new Error('Slot count cannot be more than 20 for any slot type.')
     }
